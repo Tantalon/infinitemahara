@@ -1,4 +1,7 @@
-infinitemahara
-==============
+Infinite Rooms for Mahara
+=========================
 
-Infinite Rooms plugin for Mahara
+This is the Infinite Rooms plugin for Mahara.
+
+To install, copy to [mahara home]/?/infiniterooms
+
