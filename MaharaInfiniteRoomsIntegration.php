@@ -108,7 +108,7 @@ class MaharaInfiniteRoomsIntegration extends InfiniteRoomsIntegration {
 					a.author as user,
 					concat_ws('_', atype.plugin, a.id) as module
 				FROM $artefact_table a
-				LEFT JOIN $artefact_installed_type_table atype ON atype.name = a.artefacttype;
+				LEFT JOIN $artefact_installed_type_table atype ON atype.name = a.artefacttype
 				WHERE a.mtime >= ?
 			) UNION ALL (
 				SELECT date_format(fp.ctime + interval $local_to_utc second, '%Y-%m-%dT%H:%i:%sZ') as time,
@@ -138,7 +138,7 @@ class MaharaInfiniteRoomsIntegration extends InfiniteRoomsIntegration {
 	}
 
 	protected function local_to_utc() {
-		return - ($this->utc_to_local);
+		return - $this->utc_to_local();
 	}
 
 	protected function query($query, $params) {
