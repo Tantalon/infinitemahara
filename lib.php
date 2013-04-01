@@ -23,6 +23,8 @@
 
 defined('INTERNAL') || die();
 
+require_once(dirname(__FILE__) . '/MaharaInfiniteRoomsIntegration.php');
+
 /**
  * Infinite Rooms plugin
  */
@@ -36,7 +38,8 @@ class PluginExportInfiniterooms extends Plugin {
     }
 
     public static function sync() {
-        echo "Hello\n";
+        $integration = new MaharaInfiniteRoomsIntegration();
+        $integration->sync();
     }
 
     public static function get_title() {
