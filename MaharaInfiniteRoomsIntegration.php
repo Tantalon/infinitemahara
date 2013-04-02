@@ -39,7 +39,7 @@ class MaharaInfiniteRoomsIntegration extends InfiniteRoomsIntegration {
 	}
 
 	protected function get_users($since_time) {
-		$since_time += $this->utc_to_local();
+		if ($since_time != 0) $since_time += $this->utc_to_local();
 		$user_table = db_table_name('usr');
 		
 		return $this->query("
