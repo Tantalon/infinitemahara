@@ -51,42 +51,65 @@ class MaharaInfiniteRoomsIntegration extends InfiniteRoomsIntegration {
 		", array($since_time));
 	}
 
+	# Not actually used
+	protected function get_artefacts($since_time) {
+		$artefacts = array('message', 'forum', 'page');
+		
+		$artefact_installed_type_table = db_table_name('artefact_installed_type');
+		$types = $this->query("select plugin from $artefact_installed_type_table");
+		foreach ($types as $type) {
+			$type = (object)$type;
+			$artefacts[] = $type->plugin;
+		}
+		
+		return $artefacts;
+	}
+
 	protected function get_modules($since_time) {
 		$since_time += $this->utc_to_local();
 		$artefact_table = db_table_name('artefact');
 		$artefact_installed_type_table = db_table_name('artefact_installed_type');
 		$interaction_forum_topic_table = db_table_name('interaction_forum_topic');
 		$interaction_instance_table = db_table_name('interaction_instance');
+		$notification_internal_activity_table = db_table_name('notification_internal_activity');
 		$view_table = db_table_name('view');
 		
 		return $this->query("
 			(
-				SELECT 'message' as sysid, 'message' as name
-			) UNION ALL (
 				SELECT concat_ws('_', artefacttype, a.id) as sysid,
+					atype.plugin as artefact,
 					a.title as name
 				FROM $artefact_table a
 				INNER JOIN $artefact_installed_type_table atype ON atype.name = a.artefacttype
-				WHERE a.mtime >= ? and atype.plugin != 'internal'
+				WHERE a.mtime >= ?
+			) UNION ALL (
+				SELECT concat_ws('_', 'message', m.id) AS sysid,
+					'message' as artefact,
+					null as name
+				FROM $notification_internal_activity_table m
+				WHERE m.ctime >= ?
 			) UNION ALL (
 				SELECT concat_ws('_', 'forumtopic', ft.id) AS sysid,
+					'forum' as artefact,
 					concat_ws(': ', i.title, i.description) AS name
 				FROM $interaction_forum_topic_table ft
 				INNER JOIN $interaction_instance_table i ON i.plugin = 'forum' AND i.id = ft.forum
 				WHERE i.ctime >= ?
 			) UNION ALL (
 				SELECT concat_ws('_', 'page', v.id) AS sysid,
+					'page' as artefact,
 					v.title AS name
 				FROM $view_table v
 				WHERE v.mtime >= ?
 			)
-		", array($since_time, $since_time, $since_time));
+		", array($since_time, $since_time, $since_time, $since_time));
 	}
 
 	protected function get_actions($since_time, $limit) {
 		$local_to_utc = $this->local_to_utc();
 		$since_time += $this->utc_to_local();
 		$artefact_table = db_table_name('artefact');
+		$artefact_log_table = db_table_name('artefact_log');
 		$artefact_installed_type_table = db_table_name('artefact_installed_type');
 		$notification_internal_activity_table = db_table_name('notification_internal_activity');
 		$interaction_forum_post_table = db_table_name('interaction_forum_post');
@@ -96,20 +119,25 @@ class MaharaInfiniteRoomsIntegration extends InfiniteRoomsIntegration {
 
 		return $this->query("
 			(
-				SELECT date_format(m.ctime + interval $local_to_utc second, '%Y-%m-%dT%H:%i:%sZ') as time,
-					'send message' as action,
-					m.usr as user,
-					'message' AS module
-				FROM $notification_internal_activity_table m
-				WHERE m.ctime >= ? and m.type = 2
+				SELECT date_format(l.time + interval $local_to_utc second, '%Y-%m-%dT%H:%i:%sZ') as time,
+					case
+						when l.created = 1 then 'create'
+						when l.edited = 1 then 'update'
+						when l.deleted = 1 then 'delete'
+						else 'unknown'
+					end as action,
+					l.usr as user,
+					concat_ws('_', a.artefacttype, a.id) as module
+				FROM $artefact_log_table l
+				INNER JOIN $artefact_table a ON a.id = l.artefact
+				WHERE l.time >= ?
 			) UNION ALL (
-				SELECT date_format(a.mtime + interval $local_to_utc second, '%Y-%m-%dT%H:%i:%sZ') as time,
-					case when a.ctime = a.mtime then 'create' else 'update' end as action,
-					a.author as user,
-					concat_ws('_', atype.plugin, a.id) as module
-				FROM $artefact_table a
-				LEFT JOIN $artefact_installed_type_table atype ON atype.name = a.artefacttype
-				WHERE a.mtime >= ?
+				SELECT date_format(m.ctime + interval $local_to_utc second, '%Y-%m-%dT%H:%i:%sZ') as time,
+					'create' as action,
+					m.from as user,
+					concat_ws('_', 'message', m.id) as module
+				FROM $notification_internal_activity_table m
+				WHERE m.ctime >= ? and m.type = 2 and m.from is not null
 			) UNION ALL (
 				SELECT date_format(fp.ctime + interval $local_to_utc second, '%Y-%m-%dT%H:%i:%sZ') as time,
 					'post' as action,
