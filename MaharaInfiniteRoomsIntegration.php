@@ -47,8 +47,8 @@ class MaharaInfiniteRoomsIntegration extends InfiniteRoomsIntegration {
 			username,
 			concat_ws(' ', firstname, lastname) as name
 			FROM $user_table
-			WHERE ctime >= ?
-		", array($since_time));
+			WHERE (ctime >= ?) or (ctime is null and ? = 0)
+		", array($since_time, $since_time));
 	}
 
 	# Not actually used
