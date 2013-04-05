@@ -152,7 +152,7 @@ class MaharaInfiniteRoomsIntegration extends InfiniteRoomsIntegration {
 					case when v.ctime = v.mtime then 'create' else 'update' end as action,
 					v.owner as user,
 					concat_ws('_', 'page', v.id) as module
-				FROM ep_view v
+				FROM $view_table v
 				WHERE v.mtime >= ?
 			)
 			ORDER BY time LIMIT $limit
